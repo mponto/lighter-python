@@ -10,6 +10,7 @@ class WsClient:
         path="/stream",
         order_book_ids=[],
         account_ids=[],
+        auth_token='',
         on_order_book_update=print,
         # on_account_update=print,
         on_account_order_update=print,
@@ -31,6 +32,7 @@ class WsClient:
         # self.account_states = {}
         self.account_order_states = {}
 
+        self.auth_token = auth_token
         self.on_order_book_update = on_order_book_update
         # self.on_account_update = on_account_update
         self.on_account_order_update = on_account_order_update
@@ -53,6 +55,10 @@ class WsClient:
             self.handle_subscribed_account(message)
         elif message_type == "update/account_all":
             self.handle_update_account(message)
+        elif message_type == "subscribed/account_all_orders":
+            self.handle_subscribed_account_order(message)
+        elif message_type == "update/account_all_orders":
+            self.handle_update_account_order(message)
         elif message_type == "ping":
             # Respond to ping with pong
             ws.send(json.dumps({"type": "pong"}))
@@ -80,7 +86,7 @@ class WsClient:
             ws.send(
                 json.dumps(
                     # {"type": "subscribe", "channel": f"account_all/{account_id}"}
-                    {"type": "subscribe", "channel": f"account_all_orders/{account_id}"}
+                    {"type": "subscribe", "channel": f"account_all_orders/{account_id}", "auth": f"{self.auth_token}"}
                 )
             )
 
@@ -93,7 +99,7 @@ class WsClient:
             await ws.send(
                 json.dumps(
                     # {"type": "subscribe", "channel": f"account_all/{account_id}"}
-                    {"type": "subscribe", "channel": f"account_all_orders/{account_id}"}
+                    {"type": "subscribe", "channel": f"account_all_orders/{account_id}", "auth": f"{self.auth_token}"}
                 )
             )
 
