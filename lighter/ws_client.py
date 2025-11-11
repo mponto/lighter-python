@@ -12,7 +12,7 @@ class WsClient:
         account_ids=[],
         auth_token='',
         on_order_book_update=print,
-        # on_account_update=print,
+        on_account_update=print,
         on_account_order_update=print,
     ):
         if host is None:
@@ -29,12 +29,12 @@ class WsClient:
             raise Exception("No subscriptions provided.")
 
         self.order_book_states = {}
-        # self.account_states = {}
+        self.account_states = {}
         self.account_order_states = {}
 
         self.auth_token = auth_token
         self.on_order_book_update = on_order_book_update
-        # self.on_account_update = on_account_update
+        self.on_account_update = on_account_update
         self.on_account_order_update = on_account_order_update
 
         self.ws = None
@@ -85,7 +85,11 @@ class WsClient:
         for account_id in self.subscriptions["accounts"]:
             ws.send(
                 json.dumps(
-                    # {"type": "subscribe", "channel": f"account_all/{account_id}"}
+                    {"type": "subscribe", "channel": f"account_all/{account_id}"}
+                )
+            )
+            ws.send(
+                json.dumps(
                     {"type": "subscribe", "channel": f"account_all_orders/{account_id}", "auth": f"{self.auth_token}"}
                 )
             )
@@ -98,7 +102,11 @@ class WsClient:
         for account_id in self.subscriptions["accounts"]:
             await ws.send(
                 json.dumps(
-                    # {"type": "subscribe", "channel": f"account_all/{account_id}"}
+                    {"type": "subscribe", "channel": f"account_all/{account_id}"}
+                )
+            )
+            await ws.send(
+                json.dumps(
                     {"type": "subscribe", "channel": f"account_all_orders/{account_id}", "auth": f"{self.auth_token}"}
                 )
             )
@@ -140,17 +148,17 @@ class WsClient:
             order for order in existing_orders if float(order["size"]) > 0
         ]
 
-    # def handle_subscribed_account(self, message):
-    #     account_id = message["channel"].split(":")[1]
-    #     self.account_states[account_id] = message
-    #     if self.on_account_update:
-    #         self.on_account_update(account_id, self.account_states[account_id])
+    def handle_subscribed_account(self, message):
+        account_id = message["channel"].split(":")[1]
+        self.account_states[account_id] = message
+        if self.on_account_update:
+            self.on_account_update(account_id, self.account_states[account_id])
 
-    # def handle_update_account(self, message):
-    #     account_id = message["channel"].split(":")[1]
-    #     self.account_states[account_id] = message
-    #     if self.on_account_update:
-    #         self.on_account_update(account_id, self.account_states[account_id])
+    def handle_update_account(self, message):
+        account_id = message["channel"].split(":")[1]
+        self.account_states[account_id] = message
+        if self.on_account_update:
+            self.on_account_update(account_id, self.account_states[account_id])
 
     def handle_subscribed_account_order(self, message):
         account_id = message["channel"].split(":")[1]
