@@ -10,8 +10,10 @@ class WsClient:
         path="/stream",
         order_book_ids=[],
         account_ids=[],
+        auth_token='',
         on_order_book_update=print,
         on_account_update=print,
+        on_account_order_update=print,
     ):
         if host is None:
             host = Configuration.get_default().host.replace("https://", "")
@@ -28,9 +30,12 @@ class WsClient:
 
         self.order_book_states = {}
         self.account_states = {}
+        self.account_order_states = {}
 
+        self.auth_token = auth_token
         self.on_order_book_update = on_order_book_update
         self.on_account_update = on_account_update
+        self.on_account_order_update = on_account_order_update
 
         self.ws = None
 
@@ -50,6 +55,10 @@ class WsClient:
             self.handle_subscribed_account(message)
         elif message_type == "update/account_all":
             self.handle_update_account(message)
+        elif message_type == "subscribed/account_all_orders":
+            self.handle_subscribed_account_order(message)
+        elif message_type == "update/account_all_orders":
+            self.handle_update_account_order(message)
         elif message_type == "ping":
             # Respond to ping with pong
             ws.send(json.dumps({"type": "pong"}))
@@ -79,6 +88,11 @@ class WsClient:
                     {"type": "subscribe", "channel": f"account_all/{account_id}"}
                 )
             )
+            ws.send(
+                json.dumps(
+                    {"type": "subscribe", "channel": f"account_all_orders/{account_id}", "auth": f"{self.auth_token}"}
+                )
+            )
 
     async def handle_connected_async(self, ws):
         for market_id in self.subscriptions["order_books"]:
@@ -89,6 +103,11 @@ class WsClient:
             await ws.send(
                 json.dumps(
                     {"type": "subscribe", "channel": f"account_all/{account_id}"}
+                )
+            )
+            await ws.send(
+                json.dumps(
+                    {"type": "subscribe", "channel": f"account_all_orders/{account_id}", "auth": f"{self.auth_token}"}
                 )
             )
 
@@ -140,6 +159,18 @@ class WsClient:
         self.account_states[account_id] = message
         if self.on_account_update:
             self.on_account_update(account_id, self.account_states[account_id])
+
+    def handle_subscribed_account_order(self, message):
+        account_id = message["channel"].split(":")[1]
+        self.account_order_states[account_id] = message
+        if self.on_account_order_update:
+            self.on_account_order_update(account_id, self.account_order_states[account_id])
+
+    def handle_update_account_order(self, message):
+        account_id = message["channel"].split(":")[1]
+        self.account_order_states[account_id] = message
+        if self.on_account_order_update:
+            self.on_account_order_update(account_id, self.account_order_states[account_id])
 
     def handle_unhandled_message(self, message):
         raise Exception(f"Unhandled message: {message}")
